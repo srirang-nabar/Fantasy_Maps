@@ -1,0 +1,18 @@
+# VAE-GAN at 128px (Stage 4 / sharpness story). Encoder→latent→decoder kept from the
+# β-VAE (so metrics + slider demo still apply); decoder trained with L1 + adversarial
+# (PatchGAN, hinge) instead of MSE — the adversarial term produces sharp edges.
+img_size: 128
+latent_dim: 32
+channels: 64
+disc_channels: 64
+disc_layers: 3
+lr: 0.0002
+batch_size: 64
+epochs: 120
+lambda_l1: 30         # L1 anchors reconstruction structure...
+lambda_adv: 1.0       # ...adversarial sharpens it
+beta_kl: 0.5          # keep the latent usable without over-regularizing (which blurs)
+cache: false
+num_workers: 8
+train_limit: 15000    # 15k maps is plenty for sharp reconstructions
+seeds: [0]

@@ -81,6 +81,44 @@ def vae_loss(recon, x, mu, logvar, beta: float):
     return loss, recon_term, kl_term
 
 
+class PatchDiscriminator(nn.Module):
+    """Spectral-norm PatchGAN (pix2pix-style): classifies overlapping patches real/fake.
+
+    Used by the VAE-GAN (train_gan.py) to replace pixel-MSE with an adversarial signal,
+    which is what actually produces sharp edges instead of blur. Spectral norm keeps
+    adversarial training stable without extra gradient penalties.
+    """
+
+    def __init__(self, ch: int = 64, n_layers: int = 3):
+        super().__init__()
+        SN = nn.utils.spectral_norm
+        layers = [SN(nn.Conv2d(3, ch, 4, 2, 1)), nn.LeakyReLU(0.2, inplace=True)]
+        c = ch
+        for _ in range(1, n_layers):
+            oc = min(c * 2, 512)
+            layers += [SN(nn.Conv2d(c, oc, 4, 2, 1)), nn.InstanceNorm2d(oc, affine=True),
+                       nn.LeakyReLU(0.2, inplace=True)]
+            c = oc
+        oc = min(c * 2, 512)
+        layers += [SN(nn.Conv2d(c, oc, 4, 1, 1)), nn.InstanceNorm2d(oc, affine=True),
+                   nn.LeakyReLU(0.2, inplace=True), SN(nn.Conv2d(oc, 1, 4, 1, 1))]
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x)  # (B, 1, h, w) patch logits
+
+
+def d_hinge_loss(real_logits, recon_logits, samp_logits):
+    """Discriminator hinge loss: push real >+1, fakes (recon + prior samples) <-1."""
+    return (F.relu(1.0 - real_logits).mean()
+            + 0.5 * (F.relu(1.0 + recon_logits).mean() + F.relu(1.0 + samp_logits).mean()))
+
+
+def g_hinge_loss(recon_logits, samp_logits):
+    """Generator adversarial loss: maximize the discriminator's score on both fakes."""
+    return -recon_logits.mean() - samp_logits.mean()
+
+
 def _log_normal(z, mu, logvar):
     """Elementwise log N(z; mu, exp(logvar))."""
     return -0.5 * (_LOG2PI + logvar + (z - mu) ** 2 * torch.exp(-logvar))

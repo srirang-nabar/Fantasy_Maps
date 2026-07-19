@@ -36,3 +36,4 @@ So the low disentanglement is not an artifact of choosing the wrong VAE variant:
 purpose-built to disentangle also cannot recover the factor oracle from this data
 unsupervised. Two different objectives, same ceiling — the strongest form of the
 Locatello-consistent conclusion this benchmark can give.
+| C8 | VAE-GAN sharpness follow-up avoids posterior collapse: KL stays ≈9.9 through the entire adversarial phase (epochs 20–89: min 9.69, final 9.88) with free-bits + reconstruct-first warmup; latent stays controllable (`results/gan_traversal.png`). | KL min 9.69 / final 9.88 post-adv | 00_review_walkthrough, VAE-GAN cell | asserted in-notebook | results/checkpoints/vaegan_seed0_128px.json |

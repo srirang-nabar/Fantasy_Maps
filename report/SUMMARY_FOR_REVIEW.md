@@ -18,6 +18,7 @@ and a factor-correlation ceiling — and when the original factor set failed tha
 | H2 ✓ | Does the rate–distortion tradeoff hold? | **Yes** — reconstruction error rises monotonically with β (ρ = 0.97, p_holm < 0.001): β does its mechanical job, it just doesn't buy disentanglement |
 | H3 ✓ | Does the β-VAE beat a linear baseline? | **Yes, modestly** — best β-VAE MIG 0.095 vs PCA-on-pixels 0.043 (p_holm = 0.029) |
 | — | β-TCVAE follow-up | The objective *designed* to disentangle (penalizing total correlation directly) gives **no significant gain** (0.089 vs 0.095, p = 0.72) — two unsupervised objectives, one ~0.09 ceiling |
+| — | VAE-GAN sharpness follow-up | β-VAEs are blurry by design; a **VAE-GAN** decoder (L1 + PatchGAN) is crisp but naively suffers **posterior collapse** (KL→0.07, every input maps to one image). Fixed with free-bits + reconstruct-first warmup + TTUR: **KL held ≈9.9 through the whole adversarial phase** — sharp *and* controllable, shipped in the demo |
 
 **How to review quickly (~5 min):**
 

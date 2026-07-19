@@ -7,10 +7,14 @@ img_size: 256
 latent_dim: 48        # roomier bottleneck than the 16-dim headline model -> more detail
 channels: 64          # wider conv stack
 lr: 0.0005            # a touch lower for stability at higher resolution
-batch_size: 48
-epochs: 60
+batch_size: 96        # bigger batch keeps the 4090 busier (256px is data-loading-bound)
+epochs: 25
 cache: false          # 256px cache would be ~21 GB RAM; decode each epoch with workers instead
-num_workers: 6
+num_workers: 12       # 256px decode is the bottleneck — parallelize it hard
 
-betas: [1, 4]
+# Fast sharpness-preview scope: β=1 (sharpest) on an 8k-image subset — enough to judge
+# reconstruction sharpness in ~15 min without a 30-hour full run. Scale up later if it's worth it.
+train_limit: 8000
+val_limit: 800
+betas: [1]
 seeds: [0]

@@ -65,9 +65,14 @@ def train_cell(cfg: dict, beta: float, seed: int, smoke: bool, device: str = "cp
     factor_table = dataset.load_factor_table(gen_cfg)
 
     train_seeds, val_seeds = splits["train"], splits["val"]
-    if smoke:
-        train_seeds = train_seeds[: cfg.get("train_limit", 400)]
-        val_seeds = val_seeds[: cfg.get("val_limit", 100)]
+    # train_limit/val_limit cap the split when present (smoke defaults to a tiny cap);
+    # useful for a fast, high-res preview run that doesn't need the whole dataset.
+    tl = cfg.get("train_limit", 400 if smoke else None)
+    vl = cfg.get("val_limit", 100 if smoke else None)
+    if tl:
+        train_seeds = train_seeds[:tl]
+    if vl:
+        val_seeds = val_seeds[:vl]
 
     common = dict(img_size=cfg["img_size"], config=gen_cfg,
                   factor_table=factor_table, cache=cfg.get("cache", False))

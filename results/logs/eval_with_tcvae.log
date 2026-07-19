@@ -1,0 +1,44 @@
+=== loading eval set at 64px ===
+  3000 eval maps, 5 factors
+  beta1.0_seed0_64px: MIG=0.090 DCI-D=0.077 recon_mse=0.0043
+  beta1.0_seed1_64px: MIG=0.067 DCI-D=0.103 recon_mse=0.0043
+  beta1.0_seed2_64px: MIG=0.096 DCI-D=0.076 recon_mse=0.0043
+  beta2.0_seed0_64px: MIG=0.066 DCI-D=0.110 recon_mse=0.0049
+  beta2.0_seed1_64px: MIG=0.090 DCI-D=0.078 recon_mse=0.0048
+  beta2.0_seed2_64px: MIG=0.057 DCI-D=0.082 recon_mse=0.0049
+  beta4.0_seed0_64px: MIG=0.096 DCI-D=0.109 recon_mse=0.0057
+  beta4.0_seed1_64px: MIG=0.099 DCI-D=0.112 recon_mse=0.0057
+  beta4.0_seed2_64px: MIG=0.090 DCI-D=0.064 recon_mse=0.0057
+  beta8.0_seed0_64px: MIG=0.079 DCI-D=0.108 recon_mse=0.0066
+  beta8.0_seed1_64px: MIG=0.097 DCI-D=0.090 recon_mse=0.0065
+  beta8.0_seed2_64px: MIG=0.110 DCI-D=0.105 recon_mse=0.0066
+  tcvae_beta1.0_seed0_64px: MIG=0.079 DCI-D=0.079 recon_mse=0.0043
+  tcvae_beta1.0_seed1_64px: MIG=0.070 DCI-D=0.083 recon_mse=0.0043
+  tcvae_beta1.0_seed2_64px: MIG=0.106 DCI-D=0.085 recon_mse=0.0045
+  tcvae_beta2.0_seed0_64px: MIG=0.107 DCI-D=0.109 recon_mse=0.0047
+  tcvae_beta2.0_seed1_64px: MIG=0.063 DCI-D=0.088 recon_mse=0.0047
+  tcvae_beta2.0_seed2_64px: MIG=0.062 DCI-D=0.095 recon_mse=0.0050
+  tcvae_beta4.0_seed0_64px: MIG=0.086 DCI-D=0.135 recon_mse=0.0053
+  tcvae_beta4.0_seed1_64px: MIG=0.093 DCI-D=0.105 recon_mse=0.0052
+  tcvae_beta4.0_seed2_64px: MIG=0.086 DCI-D=0.073 recon_mse=0.0055
+  tcvae_beta8.0_seed0_64px: MIG=0.089 DCI-D=0.149 recon_mse=0.0057
+  tcvae_beta8.0_seed1_64px: MIG=0.093 DCI-D=0.100 recon_mse=0.0057
+  tcvae_beta8.0_seed2_64px: MIG=0.084 DCI-D=0.109 recon_mse=0.0062
+  pca_16d_64px: MIG=0.043 DCI-D=0.162 (baseline)
+=== loading eval set at 128px ===
+  3000 eval maps, 5 factors
+  beta1.0_seed0_128px: MIG=0.051 DCI-D=0.082 recon_mse=0.0048
+  beta1.0_seed1_128px: MIG=0.116 DCI-D=0.079 recon_mse=0.0050
+  beta1.0_seed2_128px: MIG=0.110 DCI-D=0.051 recon_mse=0.0049
+  beta2.0_seed0_128px: MIG=0.084 DCI-D=0.085 recon_mse=0.0048
+  beta2.0_seed1_128px: MIG=0.095 DCI-D=0.074 recon_mse=0.0045
+  beta2.0_seed2_128px: MIG=0.127 DCI-D=0.081 recon_mse=0.0049
+  beta4.0_seed0_128px: MIG=0.094 DCI-D=0.082 recon_mse=0.0047
+  beta4.0_seed1_128px: MIG=0.108 DCI-D=0.092 recon_mse=0.0047
+  beta4.0_seed2_128px: MIG=0.066 DCI-D=0.131 recon_mse=0.0051
+  beta8.0_seed0_128px: MIG=0.109 DCI-D=0.092 recon_mse=0.0053
+  beta8.0_seed1_128px: MIG=0.100 DCI-D=0.092 recon_mse=0.0053
+  beta8.0_seed2_128px: MIG=0.101 DCI-D=0.066 recon_mse=0.0053
+  pca_16d_128px: MIG=0.043 DCI-D=0.163 (baseline)
+
+wrote /home/srirang/code/personal_projects/Fantasy_Maps/results/stage3_metrics.json (38 rows)

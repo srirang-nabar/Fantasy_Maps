@@ -1,0 +1,14 @@
+# β-VAE sweep config (plan.md Stage 2). One (beta, seed) cell = one train.py run;
+# scripts/run_sweep.sh iterates the grid. Same model across all cells — only the
+# KL weight (beta) changes — so disentanglement differences are attributable to beta.
+img_size: 64          # training resolution (fits free Colab/Kaggle); 128 is the stretch
+latent_dim: 16        # matched by the PCA baseline (H3)
+channels: 32          # base conv width
+lr: 0.001
+batch_size: 128
+epochs: 30
+cache: true           # cache decoded images in RAM (~1.3 GB); with num_workers=0 it persists across epochs
+num_workers: 0        # 0 keeps the cache in-process (see train.py); >0 re-decodes every epoch
+
+betas: [1, 2, 4, 8]   # H1 sweep
+seeds: [0, 1, 2]      # >=3 training seeds per beta (across-seed bands)

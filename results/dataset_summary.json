@@ -1,0 +1,62 @@
+{
+  "n_records": 33000,
+  "expected": 33000,
+  "complete": true,
+  "n_duplicate_seeds": 0,
+  "n_missing_seeds": 0,
+  "n_unexpected_seeds": 0,
+  "n_missing_images": 0,
+  "n_orphan_images": 0,
+  "n_wrong_size_images": 0,
+  "coverage_ok": true,
+  "coverage": {
+    "land_fraction": {
+      "ok": true,
+      "distinct": 32598,
+      "std": 0.0938315039860588,
+      "min": 0.38874137015400956,
+      "max": 0.9993000699930007,
+      "mode_fraction": 0.00039393939393939396
+    },
+    "mountain_fraction_of_land": {
+      "ok": true,
+      "distinct": 28797,
+      "std": 0.08442707996143949,
+      "min": 0.0,
+      "max": 0.5900603678225467,
+      "mode_fraction": 0.10103030303030303
+    },
+    "coastline_raggedness": {
+      "ok": true,
+      "distinct": 32699,
+      "std": 6.194489134682102,
+      "min": 0.2900870391695853,
+      "max": 49.27277726717965,
+      "mode_fraction": 9.09090909090909e-05
+    },
+    "river_density": {
+      "ok": true,
+      "distinct": 30833,
+      "std": 0.01991879398459612,
+      "min": 0.0,
+      "max": 0.1881656804733728,
+      "mode_fraction": 0.012151515151515151
+    },
+    "lake_count": {
+      "ok": true,
+      "distinct": 107,
+      "std": 11.086460930116724,
+      "min": 0.0,
+      "max": 112.0,
+      "mode_fraction": 0.14539393939393938
+    }
+  },
+  "correlation_ok": true,
+  "max_abs_offdiag_correlation": 0.7378758321960966,
+  "worst_correlated_pair": {
+    "a": "land_fraction",
+    "b": "coastline_raggedness",
+    "rho": -0.7378758321960966
+  },
+  "gate_ok": true
+}

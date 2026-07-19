@@ -1,0 +1,10 @@
+data/raw/
+# transfer tarballs (regenerable via scripts/pack_dataset.sh; not part of the repro unit)
+maps.tgz
+project.tgz
+plan.md
+report/interview_qa.md
+report/resume_bullets.md
+.venv/
+__pycache__/
+vendor/

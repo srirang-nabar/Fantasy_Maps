@@ -1,0 +1,15 @@
+# Smoke config (plan.md ground rule): tiny model + tiny data, CPU-runnable in ~1
+# min, exercises the full train.py path. Not a real result — the numbers are junk.
+img_size: 64
+latent_dim: 8
+channels: 16
+lr: 0.001
+batch_size: 32
+epochs: 2
+cache: true
+
+train_limit: 400      # subset of train seeds (smoke only)
+val_limit: 100        # subset of val seeds (smoke only)
+
+betas: [4]
+seeds: [0]

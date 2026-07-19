@@ -1,0 +1,30 @@
+# Pinned generation + dataset config (Stage 1). Single source of truth for the
+# data engine, the Stage 1 gate tests (tests/test_dataset.py), and the manifest
+# builder (scripts/build_manifest.py). Mirrors the pre-registered protocol in
+# HYPOTHESES.md — changing a value here is a protocol amendment, record it there.
+
+seed_start: 1
+seed_end: 33000          # inclusive
+eval_seed_start: 30001   # seeds >= this are the held-out eval set (last 3000)
+n_shards: 4              # seed s lives in shard (s % n_shards)
+
+view: 512                # generation viewport (px); part of the config — factors are size-dependent
+out_size: 256            # downsampled training image size (px)
+
+# Ground-truth factor set: derived measurable properties, not raw generator
+# knobs (knobs interact). Order fixed — the correlation matrix indexes by it.
+# Definitions live in src/fantasy_maps/factors.py (single source of truth); this
+# list must equal factors.GROUND_TRUTH (asserted in tests/test_factors.py).
+# Redesigned after the Stage 1 correlation gate — see HYPOTHESES.md amendment 1.
+factors:
+  - land_fraction
+  - mountain_fraction_of_land
+  - coastline_raggedness
+  - river_density
+  - lake_count
+
+# Pre-registered Stage 1 gate thresholds (HYPOTHESES.md).
+gates:
+  max_abs_correlation: 0.8   # ceiling on pairwise |rho| between factors; exceed => redesign factor set BEFORE training
+  min_distinct: 20           # coverage: each factor must take at least this many distinct values
+  max_mode_fraction: 0.95    # coverage: no single value may cover this fraction or more of records (non-degenerate)

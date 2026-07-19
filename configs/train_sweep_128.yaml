@@ -1,0 +1,16 @@
+# 128px β-VAE sweep — the "sharpness stretch" (plan.md Stage 4 optional). Same
+# protocol as train_sweep.yaml but at double the resolution: one extra conv layer
+# each side (models.py sizes to img_size), ~4x the compute, ~5 GB image cache.
+# Checkpoints are tagged ..._128px so they never collide with the 64px run.
+# The pre-registered headline (H1-H3) is the 64px sweep; this is a comparison.
+img_size: 128
+latent_dim: 16        # same bottleneck as 64px — comparison is about resolution, not capacity
+channels: 32
+lr: 0.001
+batch_size: 128
+epochs: 30
+cache: true           # ~5 GB in RAM (box has plenty); persists across epochs with num_workers=0
+num_workers: 0
+
+betas: [1, 2, 4, 8]
+seeds: [0, 1, 2]

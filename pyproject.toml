@@ -1,0 +1,45 @@
+[project]
+name = "fantasy-maps"
+version = "0.1.0"
+description = "This Fantasy Map Does Not Exist: a factor-labeled disentanglement benchmark from a procedural map generator"
+requires-python = ">=3.13"
+dependencies = [
+    "numpy>=2.5.1",
+    "pillow>=12.3.0",
+    "playwright>=1.61.0",
+    "pyyaml>=6.0.3",
+    "torch>=2.6",
+    "scikit-learn>=1.5",
+    "matplotlib>=3.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+# CPU torch for local dev/smoke (this box has no GPU); Colab/Kaggle install their
+# own CUDA build. See REPRODUCING.md — training is not done on the dev machine.
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.pytest.ini_options]
+markers = [
+  "gate_stage0: stage 0 gate tests",
+  "gate_stage1: stage 1 gate tests (slow, real browser)",
+  "gate_stage1_data: stage 1 dataset gate tests (fast, no browser; run when generation completes)",
+  "gate_stage2: stage 2 training-path tests (CPU, no GPU needed)",
+  "gate_stage3: stage 3 metric calibration + measurement tests (CPU)",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fantasy_maps"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

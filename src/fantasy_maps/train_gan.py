@@ -72,49 +72,66 @@ def train_gan(cfg, seed, smoke, device="cpu"):
     vae = models.ConvVAE(cfg["img_size"], cfg["latent_dim"], cfg["channels"]).to(device)
     disc = models.PatchDiscriminator(cfg.get("disc_channels", 64), cfg.get("disc_layers", 3)).to(device)
     opt_g = torch.optim.Adam(vae.parameters(), lr=cfg["lr"], betas=(0.5, 0.999))
-    opt_d = torch.optim.Adam(disc.parameters(), lr=cfg["lr"], betas=(0.5, 0.999))
+    opt_d = torch.optim.Adam(disc.parameters(), lr=cfg.get("disc_lr", cfg["lr"]), betas=(0.5, 0.999))
     l1w, advw, klw = cfg["lambda_l1"], cfg["lambda_adv"], cfg["beta_kl"]
+    free_bits = cfg.get("free_bits", 0.0)       # per-dim KL floor: latent can't collapse below this
+    kl_warm = max(cfg.get("kl_warmup", 1), 1)
+    adv_start = cfg.get("adv_start", 0)         # pure autoencoder before this epoch
+    adv_warm = max(cfg.get("adv_warmup", 1), 1)
 
     history = []
     for epoch in range(cfg["epochs"]):
         vae.train(); disc.train()
+        # anti-collapse schedule: learn a real latent (L1 + free-bits KL) first, then ramp
+        # in the KL regularizer and the adversarial sharpener so it can't steamroll the encoder.
+        kl_w = klw * min(1.0, (epoch + 1) / kl_warm)
+        adv_w = 0.0 if epoch < adv_start else advw * min(1.0, (epoch - adv_start + 1) / adv_warm)
         t0 = time.time()
         agg = {"d": 0.0, "g_adv": 0.0, "l1": 0.0, "kl": 0.0, "n": 0}
         for img, _f, _s in train_ld:
             img = img.to(device)
-            # ---- discriminator ----
-            with torch.no_grad():
-                recon, mu, _lv, _z = vae(img)
-                samp = vae.decode(torch.randn_like(mu))
-            loss_d = models.d_hinge_loss(disc(img), disc(recon), disc(samp))
-            opt_d.zero_grad(); loss_d.backward(); opt_d.step()
+            # ---- discriminator (only once the adversarial phase is on) ----
+            d_val = 0.0
+            if adv_w > 0:
+                with torch.no_grad():
+                    recon, mu, _lv, _z = vae(img)
+                    samp = vae.decode(torch.randn_like(mu))
+                loss_d = models.d_hinge_loss(disc(img), disc(recon), disc(samp))
+                opt_d.zero_grad(); loss_d.backward(); opt_d.step()
+                d_val = loss_d.item()
             # ---- generator (encoder + decoder) ----
             recon, mu, logvar, _z = vae(img)
-            samp = vae.decode(torch.randn_like(mu))
-            g_adv = models.g_hinge_loss(disc(recon), disc(samp))
             l1 = F.l1_loss(recon, img)
-            kl = (-0.5 * (1 + logvar - mu.pow(2) - logvar.exp())).sum(1).mean()
-            loss_g = l1w * l1 + advw * g_adv + klw * kl
+            kl_dims = (-0.5 * (1 + logvar - mu.pow(2) - logvar.exp())).mean(0)   # (D,) per-dim KL
+            kl_free = torch.clamp(kl_dims, min=free_bits).sum()                  # free bits
+            loss_g = l1w * l1 + kl_w * kl_free
+            g_adv_val = 0.0
+            if adv_w > 0:
+                samp = vae.decode(torch.randn_like(mu))
+                g_adv = models.g_hinge_loss(disc(recon), disc(samp))
+                loss_g = loss_g + adv_w * g_adv
+                g_adv_val = g_adv.item()
             opt_g.zero_grad(); loss_g.backward(); opt_g.step()
 
             bs = img.size(0)
-            agg["d"] += loss_d.item() * bs; agg["g_adv"] += g_adv.item() * bs
-            agg["l1"] += l1.item() * bs; agg["kl"] += kl.item() * bs; agg["n"] += bs
+            agg["d"] += d_val * bs; agg["g_adv"] += g_adv_val * bs
+            agg["l1"] += l1.item() * bs; agg["kl"] += float(kl_dims.sum().item()) * bs; agg["n"] += bs
         n = max(agg["n"], 1)
         vl1 = _val_l1(vae, val_ld, device)
         rec = {"epoch": epoch, "d_loss": agg["d"] / n, "g_adv": agg["g_adv"] / n,
                "l1": agg["l1"] / n, "kl": agg["kl"] / n, "val_l1": vl1,
-               "seconds": round(time.time() - t0, 1)}
+               "kl_w": round(kl_w, 4), "adv_w": round(adv_w, 3), "seconds": round(time.time() - t0, 1)}
         history.append(rec)
         print(f"[vaegan seed={seed}] epoch {epoch}: d={rec['d_loss']:.3f} g_adv={rec['g_adv']:.3f} "
-              f"l1={rec['l1']:.4f} kl={rec['kl']:.2f} val_l1={vl1:.4f}  {rec['seconds']}s")
+              f"l1={rec['l1']:.4f} kl={rec['kl']:.2f} adv_w={adv_w:.2f} val_l1={vl1:.4f}  {rec['seconds']}s")
 
     CKPT_DIR.mkdir(parents=True, exist_ok=True)
     tag = f"{'smoke_' if smoke else ''}vaegan_seed{seed}_{cfg['img_size']}px"
     sidecar = {
         "tag": tag, "loss": "vaegan", "beta": cfg["beta_kl"], "seed": seed, "smoke": smoke,
         "img_size": cfg["img_size"], "latent_dim": cfg["latent_dim"], "channels": cfg["channels"],
-        "lambda_l1": l1w, "lambda_adv": advw, "epochs": cfg["epochs"], "n_train": len(train_seeds),
+        "lambda_l1": l1w, "lambda_adv": advw, "free_bits": free_bits, "kl_warmup": kl_warm,
+        "adv_start": adv_start, "adv_warmup": adv_warm, "epochs": cfg["epochs"], "n_train": len(train_seeds),
         "split_fingerprint": fp, "factors": factors.GROUND_TRUTH,
         "torch_version": torch.__version__, "history": history,
     }

@@ -60,6 +60,28 @@ different objectives, same result — the strongest Locatello-consistent stateme
 benchmark supports: the ceiling is a property of the unsupervised setting and the data, not
 of the particular model. (`results/tcvae_comparison.png`, C7.)
 
+## Sharpness follow-up: 256px VAE and VAE-GAN
+
+The β-VAE is blurry by design. Two experiments probed how far sharpness can go while
+keeping the interpretable latent the demo needs (`results/reconstruction_all.png`):
+
+- **256px VAE** — native full-resolution, larger latent/model. Better *structure* than
+  64px (landmasses become recognizable) but still soft: MSE reconstruction has a hard
+  blur ceiling that resolution alone doesn't break.
+- **VAE-GAN** — same encoder→latent→decoder, but the decoder is trained with L1 +
+  adversarial (PatchGAN) instead of MSE. **Crisp** (real texture, fine coastlines).
+  A first attempt suffered posterior collapse (KL→0.07, one map for every input);
+  fixed with four levers — a reconstruct-first warmup (pure autoencoder before
+  adversarial), a **free-bits KL floor**, stronger L1 + weaker adversarial, and TTUR.
+  The fix held: **KL stayed ≈9.9 through the full adversarial phase** (vs 0.07 before),
+  reconstructions became input-distinct again, and the latent stayed controllable
+  (`results/gan_traversal.png`). Result: **sharp *and* controllable.**
+
+The takeaway is the **sharpness ↔ control tradeoff**: β-VAE gives a measurable,
+interpretable latent but blurry images; a naive VAE-GAN gives sharpness but collapses
+the latent; only with explicit anti-collapse regularization do you recover both. The
+interactive demo (`report/demo_web.html`) ships all of them behind a model selector.
+
 ## Limitations
 
 - Factors are generator-specific derived properties, not canonical independent generative

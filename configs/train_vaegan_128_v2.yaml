@@ -1,0 +1,24 @@
+# VAE-GAN v2 — anti-collapse (Stage 4 / sharpness). Fixes the v1 posterior collapse
+# (KL→0, latent ignored) with: pure-autoencoder warmup (learn the latent first),
+# free-bits KL floor, stronger L1 anchor + lower adversarial, and TTUR (slower D).
+img_size: 128
+latent_dim: 32
+channels: 64
+disc_channels: 64
+disc_layers: 3
+lr: 0.0002
+disc_lr: 0.0001       # TTUR: discriminator learns slower so it can't steamroll G
+batch_size: 64
+epochs: 90
+lambda_l1: 60         # stronger reconstruction anchor (was 30)
+lambda_adv: 0.7       # lower adversarial weight (was 1.0)
+beta_kl: 0.1          # lower KL weight (was 0.5)
+free_bits: 0.3        # per-dim KL floor (nats) — the key anti-collapse lever
+kl_warmup: 10         # ramp KL over 10 epochs
+adv_start: 20         # pure autoencoder (L1 + free-bits KL) for the first 20 epochs
+adv_warmup: 25        # then ramp adversarial in over epochs 20..45
+cache: false
+num_workers: 8
+# train_limit removed: train on the FULL train split
+val_limit: 1500
+seeds: [0]

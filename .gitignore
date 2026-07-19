@@ -8,3 +8,6 @@ report/resume_bullets.md
 .venv/
 __pycache__/
 vendor/
+# slim GitHub Pages copy (pushed as its own repo)
+site/
+results/_demo_payload.json

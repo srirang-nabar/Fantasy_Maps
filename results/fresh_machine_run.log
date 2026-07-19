@@ -1,0 +1,9 @@
+=== fresh-machine dry run 2026-07-19T21:27:02+05:30 ===
+git archive HEAD -> clean dir; uv sync --frozen: OK
+[NbConvertApp] Converting notebook notebooks/00_review_walkthrough.ipynb to notebook
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+
+real	0m9.888s
+user	0m9.628s
+sys	0m0.536s
+00_review_walkthrough.ipynb executed clean (all asserts green)

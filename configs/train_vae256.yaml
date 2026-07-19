@@ -1,0 +1,16 @@
+# 256px "sharper VAE" experiment (plan.md Stage 4 / sharpness story). The maps are
+# stored at 256px, so this trains at native resolution (no downsampling) with a
+# bigger latent and wider model — the low-risk sharpness bump before deciding on a
+# VAE-GAN. Two cells: β=1 (sharpest) and β=4 (more disentangled) to see the tradeoff.
+loss: vae
+img_size: 256
+latent_dim: 48        # roomier bottleneck than the 16-dim headline model -> more detail
+channels: 64          # wider conv stack
+lr: 0.0005            # a touch lower for stability at higher resolution
+batch_size: 48
+epochs: 60
+cache: false          # 256px cache would be ~21 GB RAM; decode each epoch with workers instead
+num_workers: 6
+
+betas: [1, 4]
+seeds: [0]

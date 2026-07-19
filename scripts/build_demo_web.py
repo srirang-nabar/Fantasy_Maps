@@ -51,18 +51,28 @@ def _model_list():
             if b not in best or r["mig"] > best[b]["mig"]:
                 best[b] = r
     out = [(f"b{int(b)}", f"β {int(b)}", "vae", best[b]["tag"]) for b in sorted(best)]
-    out.append(("gan", "VAE-GAN", "gan", "vaegan_seed0_128px"))
+    out.append(("v256", "256px", "vae256", "beta1.0_seed0_256px"))  # sharper-structure VAE
+    out.append(("gan", "GAN", "gan", "vaegan_seed0_128px"))
     return out
 
 
 @torch.no_grad()
-def _model_payload(tag, imgs, facs, names):
+def _model_payload(tag, eval_cache, names):
     ck = torch.load(CKPT / f"{tag}.pt", map_location="cpu", weights_only=False)
     sc = ck["sidecar"]
-    m = models.ConvVAE(sc["img_size"], sc["latent_dim"], sc["channels"])
+    res = sc["img_size"]
+    if res not in eval_cache:
+        print(f"    loading eval set at {res}px ...")
+        eval_cache[res] = evaluate.load_eval(res)
+    imgs, facs, _ = eval_cache[res]
+    m = models.ConvVAE(res, sc["latent_dim"], sc["channels"])
     m.load_state_dict(ck["model_state"]); m.eval()
     codes, _ = evaluate.encode(m, imgs)
-    z0 = np.median(codes, 0); lo = np.percentile(codes, 5, 0); hi = np.percentile(codes, 95, 0)
+    z0 = np.median(codes, 0)
+    # sweep each latent across its encoded 5-95 pct range, but at least +-2.5 units from the
+    # prototype so low-variance dims (esp. the VAE-GAN's near-free-bits dims) still move visibly.
+    lo = np.minimum(np.percentile(codes, 5, 0), z0 - 2.5)
+    hi = np.maximum(np.percentile(codes, 95, 0), z0 + 2.5)
     mi = metrics.mutual_info_matrix(codes, facs)
     mig = metrics.mig(codes, facs)["mig"]
     order = list(np.argsort(-mi.max(1))[:TOP])
@@ -81,18 +91,33 @@ def _model_payload(tag, imgs, facs, names):
             z[0, j] = float(t)
             frames.append(_uri(m.decode(z)[0].permute(1, 2, 0).numpy()))
         strips[str(j)] = frames
-    return {"order": [int(j) for j in order], "strips": strips, "labels": labels, "mig": round(mig, 3)}
+    return {"order": [int(j) for j in order], "strips": strips, "labels": labels,
+            "mig": round(mig, 3), "res": res}
+
+
+@torch.no_grad()
+def _gan_sample_payload(tag, n=42):
+    """Pool of novel crisp maps sampled from the prior (z~N(0,I)) — the GAN's generation
+    story, shown via a 'Generate' button instead of sliders (its latent is entangled)."""
+    ck = torch.load(CKPT / f"{tag}.pt", map_location="cpu", weights_only=False)
+    sc = ck["sidecar"]
+    m = models.ConvVAE(sc["img_size"], sc["latent_dim"], sc["channels"])
+    m.load_state_dict(ck["model_state"]); m.eval()
+    torch.manual_seed(0)
+    dec = m.decode(torch.randn(n, sc["latent_dim"]))
+    samples = [_uri(dec[i].permute(1, 2, 0).numpy()) for i in range(n)]
+    return {"samples": samples, "res": sc["img_size"], "n": n}
 
 
 def _build_payload():
     names = factors.GROUND_TRUTH
-    print(f"loading eval set at {RES}px ...")
-    imgs, facs, _ = evaluate.load_eval(RES)
+    eval_cache = {}   # resolution -> (imgs, facs, seeds); models may be 128px or 256px
     ml = _model_list()
     payload = {"model_list": [[k, lbl, kind] for k, lbl, kind, _ in ml], "models": {}, "steps": STEPS, "res": RES}
     for key, lbl, kind, tag in ml:
         print(f"  decoding {lbl} ({tag}) ...")
-        payload["models"][key] = _model_payload(tag, imgs, facs, names)
+        payload["models"][key] = (_gan_sample_payload(tag) if kind == "gan"
+                                  else _model_payload(tag, eval_cache, names))
     return payload
 
 
@@ -124,6 +149,7 @@ _CSS = """
 :root[data-theme="dark"]{--paper:#081521;--card:#0e2334;--ink:#e8f0f5;--ink-soft:#93a7b4;--sea:#57b2db;--peak:#e2a25c;
   --line:rgba(232,240,245,.14);--line-strong:rgba(232,240,245,.26);--chip:#122c40}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--paper);color:var(--ink);
   font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding:28px 20px 56px}
 .wrap{max-width:600px;margin:0 auto}
@@ -134,8 +160,8 @@ h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:600;font-size:clamp(3
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
 .modelbar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .modelbar .flabel{display:flex;justify-content:space-between;align-items:baseline}
-.seg{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:var(--chip);border-radius:11px;padding:5px}
-.seg button{font:600 13px/1 ui-monospace,Menlo,monospace;border:0;border-radius:8px;padding:11px 0;color:var(--ink-soft);
+.seg{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;background:var(--chip);border-radius:11px;padding:5px}
+.seg button{font:600 12px/1 ui-monospace,Menlo,monospace;border:0;border-radius:8px;padding:11px 0;color:var(--ink-soft);
   background:transparent;cursor:pointer;transition:background .15s,color .15s}
 .seg button[aria-pressed="true"]{background:var(--sea);color:#fff}
 .seg button.gan[aria-pressed="true"]{background:var(--peak)}
@@ -151,6 +177,10 @@ h1{font-family:Georgia,"Iowan Old Style",serif;font-weight:600;font-size:clamp(3
 select{appearance:none;-webkit-appearance:none;background:var(--paper);color:var(--ink);border:1px solid var(--line-strong);
   border-radius:10px;padding:12px 14px;font-size:14px;width:100%;font-family:ui-monospace,Menlo,monospace}
 input[type=range]{width:100%;accent-color:var(--peak);height:26px}
+.genbtn{font:600 15px/1 system-ui,-apple-system,sans-serif;border:0;border-radius:11px;padding:15px;color:#fff;
+  background:var(--peak);cursor:pointer;transition:filter .15s;letter-spacing:.01em}
+.genbtn:hover{filter:brightness(1.06)}.genbtn:active{filter:brightness(.93)}
+.genbtn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 .caption{margin:14px 2px 0;font-size:14.5px;color:var(--ink-soft);line-height:1.55}
 .caption b{color:var(--ink)}.peak{color:var(--peak);font-weight:600}.sea{color:var(--sea);font-weight:600}
 .finding{margin-top:30px}
@@ -179,8 +209,9 @@ _CONTENT = """<style>__CSS__</style>
     </div>
     <div class="viewer"><img id="fA" class="frame on" alt="generated fantasy map"><img id="fB" class="frame" alt=""></div>
     <div class="controls">
-      <div class="field"><span class="flabel">Latent dimension</span><select id="dim" aria-label="latent dimension"></select></div>
-      <div class="field"><span class="flabel">Position along it</span><input id="slider" type="range" min="0" max="8" value="4" aria-label="latent value"></div>
+      <div class="field" id="dimField"><span class="flabel">Latent dimension</span><select id="dim" aria-label="latent dimension"></select></div>
+      <button id="gen" class="genbtn" hidden>&#127922;&nbsp;&nbsp;Generate a new map</button>
+      <div class="field"><span class="flabel" id="sliderLabel">Position along it</span><input id="slider" type="range" min="0" max="8" value="4" aria-label="latent value"></div>
     </div>
     <p class="caption" id="cap"></p>
   </div>
@@ -209,35 +240,52 @@ _CONTENT = """<style>__CSS__</style>
 const D=__PAYLOAD__;
 const seg=document.getElementById('seg'),sel=document.getElementById('dim'),sl=document.getElementById('slider'),
   fA=document.getElementById('fA'),fB=document.getElementById('fB'),cap=document.getElementById('cap'),
-  migTag=document.getElementById('migTag'),foot=document.getElementById('foot');
-let front=fA,back=fB,cur=D.model_list[0][0];
-sl.max=D.steps-1;
+  migTag=document.getElementById('migTag'),foot=document.getElementById('foot'),
+  gen=document.getElementById('gen'),dimField=document.getElementById('dimField'),sliderLabel=document.getElementById('sliderLabel');
+let front=fA,back=fB,cur=(D.model_list.find(m=>m[2]==='gan')||D.model_list[0])[0];  // open on VAE-GAN
 D.model_list.forEach(([key,lbl,kind])=>{const btn=document.createElement('button');btn.textContent=lbl;
   if(kind==='gan')btn.className='gan';btn.setAttribute('aria-pressed',key===cur);
   btn.onclick=()=>{cur=key;syncModel();};seg.appendChild(btn);});
 function kindOf(key){return D.model_list.find(m=>m[0]===key)[2];}
+function show(uri){back.src=uri;back.classList.add('on');front.classList.remove('on');[front,back]=[back,front];}
 function syncModel(){
   [...seg.children].forEach((btn,i)=>btn.setAttribute('aria-pressed',D.model_list[i][0]===cur));
-  const M=D.models[cur];migTag.textContent='MIG '+M.mig;
-  sel.innerHTML='';
-  M.order.forEach(j=>{const L=M.labels[j];const o=document.createElement('option');o.value=j;
-    o.textContent='z'+j+'  \\u00b7  '+L.label+'  (MI '+L.mi+')';sel.appendChild(o);});
-  sl.value=(D.steps-1)>>1;render();
+  const M=D.models[cur],kind=kindOf(cur);
+  if(kind==='gan'){
+    migTag.textContent='crisp \\u00b7 novel';dimField.hidden=true;gen.hidden=false;sliderLabel.textContent='Browse this batch';
+    sl.max=M.n-1;sl.value=Math.floor(Math.random()*M.n);
+  }else{
+    migTag.textContent='MIG '+M.mig;dimField.hidden=false;gen.hidden=true;sliderLabel.textContent='Position along it';
+    sel.innerHTML='';
+    M.order.forEach(j=>{const L=M.labels[j];const o=document.createElement('option');o.value=j;
+      o.textContent='z'+j+'  \\u00b7  '+L.label+'  (MI '+L.mi+')';sel.appendChild(o);});
+    sl.max=D.steps-1;sl.value=(D.steps-1)>>1;
+  }
+  render();
 }
 function render(){
-  const M=D.models[cur],j=sel.value,L=M.labels[j],gan=kindOf(cur)==='gan';
-  back.src=M.strips[j][sl.value];back.classList.add('on');front.classList.remove('on');[front,back]=[back,front];
-  if(gan){
-    cap.innerHTML='Walking latent <b>z'+j+'</b> of the <span class="peak">VAE-GAN</span>. Notice it&rsquo;s '+
-      '<b>crisp</b> &mdash; and the map genuinely changes as you drag (the latent didn&rsquo;t collapse). '+
-      'Sharpness <i>and</i> control, the best of both.';
+  const M=D.models[cur],kind=kindOf(cur);
+  if(kind==='gan'){
+    show(M.samples[sl.value]);
+    cap.innerHTML='A brand-new fantasy map from the <span class="peak">VAE-GAN</span> &mdash; decoded from a random '+
+      'code, <b>crisp</b>, and it never existed. Hit <b>Generate</b> for another, or drag to browse this batch of '+M.n+'.';
+    foot.textContent='VAE-GAN \\u00b7 '+M.res+'px \\u00b7 novel samples \\u00b7 crisp, not eyeballed';
+    return;
+  }
+  const j=sel.value,L=M.labels[j];
+  show(M.strips[j][sl.value]);
+  if(kind==='vae256'){
+    cap.innerHTML='The &beta;-VAE at <b>256px</b>. Sharper <i>structure</i> than the 128px models &mdash; '+
+      'landmasses are recognizable &mdash; but still soft: MSE reconstruction can&rsquo;t make crisp edges at any '+
+      'resolution. That&rsquo;s why the <span class="peak">VAE-GAN</span>, not resolution, is the sharp one.';
   }else{
     cap.innerHTML='Walking latent <b>z'+j+'</b>, which most tracks <span class="sea">'+L.primary+'</span>. '+
       (L.clean?'Fairly clean &mdash; a real knob.'
              :'Weak and entangled (MI '+L.mi+'): it nudges several properties at once &mdash; low disentanglement, made visible.');
   }
-  foot.textContent=(gan?'VAE-GAN':'\\u03b2-VAE')+' \\u00b7 '+D.res+'px \\u00b7 MIG '+M.mig+' \\u00b7 measured, not eyeballed';
+  foot.textContent=(kind==='vae256'?'\\u03b2-VAE 256px':'\\u03b2-VAE')+' \\u00b7 '+M.res+'px \\u00b7 MIG '+M.mig+' \\u00b7 measured, not eyeballed';
 }
+gen.onclick=()=>{const M=D.models[cur];let v;do{v=Math.floor(Math.random()*M.n);}while(M.n>1&&v===+sl.value);sl.value=v;render();};
 sel.onchange=render;sl.oninput=render;syncModel();
 </script>"""
 
